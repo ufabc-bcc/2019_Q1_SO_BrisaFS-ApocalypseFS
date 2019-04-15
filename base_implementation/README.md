@@ -11,7 +11,7 @@
 Informações sobre o projeto, o enunciado, datas de entrega, avaliação em: http://professor.ufabc.edu.br/~e.francesquini/2019.q1.so/projeto
 
 
-![ApocalypseFS](figs/apocalypse.jpg)
+![ApocalypseFS](../figs/apocalypse.jpg)
 
 
 
