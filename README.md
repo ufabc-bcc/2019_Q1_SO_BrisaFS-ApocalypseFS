@@ -1,20 +1,18 @@
-# Universidade Federal do ABC
+# Apocalypse FS
 
-**2019.Q1 MCTA026-13 - Sistemas Operacionais**
+## Testes
 
-**Professor:** [Emilio Francesquini](http://professor.ufabc.edu.br/~e.francesquini)
+- O projeto, atualmente, está sendo desenvolvido e testado nas distros Fedora e Ubuntu.
+- O repositório principal poderá conter bugs, porém, o código sempre será compilável. Para acesso às versões mais recentes, alterne para a `branch` **unstable-dev**.
 
-**E-mail:** [e.francesquini@ufabc.edu.br](mailto:e.francesquini@ufabc.edu.br)
+[//]: # (**2019.Q1 MCTA026-13 - Sistemas Operacionais**)
 
-## Projeto de Programação - BrisaFS
+[//]: # (**Professor:** [Emilio Francesquini](http://professor.ufabc.edu.br/~e.francesquini))
 
-Informações sobre o projeto, o enunciado, datas de entrega, avaliação em: http://professor.ufabc.edu.br/~e.francesquini/2019.q1.so/projeto
+[//]: # (**E-mail:** [e.francesquini@ufabc.edu.br](mailto:e.francesquini@ufabc.edu.br))
 
+## Projeto de Programação - ApocalypseFS
 
-![BrisaFS](figs/brisa.jpg "Mike Bitzenhofer (CC BY-NC-ND 2.0)")
+Maiores informações à respeito da base do projeto disponíveis em : [Projeto base](base_implementation/).
 
-
-
-----
-
-Crédito imagem: Mike Bitzenhofer (CC BY-NC-ND 2.0)
+![ApocalypseFS](figs/apocalypse.jpg)
