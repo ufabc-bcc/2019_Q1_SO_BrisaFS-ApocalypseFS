@@ -15,7 +15,7 @@
 #include "apocalypse_functions.h"
 
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                     uint16_t tamanho, uint16_t block, const byte *conteudo) {
+                     uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo) {
     char *mnome = (char*)nome;
     //Joga fora a(s) barras iniciais
     while (mnome[0] != '\0' && mnome[0] == '/')
@@ -24,7 +24,9 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
     strcpy(superblock[isuperblock].name, mnome);
     superblock[isuperblock].rights = direitos;
     superblock[isuperblock].size = tamanho;
-    superblock[isuperblock]block = block;
+    superblock[isuperblock].block = block;
+    if (time) superblock[isuperblock].time = time;
+    
     if (conteudo != NULL)
         memcpy(disk + DISK_OFFSET(block), conteudo, tamanho);
     else
@@ -41,7 +43,7 @@ void init_apocalypsefs() {
     //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
     char *conteudo = "Adoro as aulas de SO da UFABC!\n";
     //0 está sendo usado pelo superblock. O primeiro livre é o 1
-    fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, (byte*)conteudo);
+    fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, time(NULL), (byte*)conteudo);
 }
 
 //-------------------------------------------------------------------
@@ -80,6 +82,7 @@ static int getattr_apocalypsefs(const char *path, struct stat *stbuf,
             stbuf->st_mode = S_IFREG | superblock[i].rights;
             stbuf->st_nlink = 1;
             stbuf->st_size = superblock[i].size;
+            stbuf->st_ctime = superblock[i].time;
             return 0; //OK, arquivo encontrado
         }
     }
@@ -150,12 +153,12 @@ static int write_apocalypsefs(const char *path, const char *buf, size_t size,
                          off_t offset, struct fuse_file_info *fi) {
 
     for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block == 0) { //block vazio
+        if (superblock[i].block == 0) { //block vazio
             continue;
         }
         if (compare_name(path, superblock[i].name)) {//achou!
             // Cuidado! Não checa se a quantidade de bytes cabe no arquivo!
-            memcpy(disk + DISK_OFFSET(superblock[i]block) + offset, buf, size);
+            memcpy(disk + DISK_OFFSET(superblock[i].block) + offset, buf, size);
             superblock[i].size = offset + size;
             return size;
         }
@@ -163,8 +166,8 @@ static int write_apocalypsefs(const char *path, const char *buf, size_t size,
     //Se chegou aqui não achou. Entao cria
     //Acha o primeiro block vazio
     for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block == 0) {//ninguem usando
-            fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, buf);
+        if (superblock[i].block == 0) {//ninguem usando
+            fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), buf);
             return size;
         }
     }
@@ -194,8 +197,8 @@ static int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_
     } else {// Arquivo novo
         //Acha o primeiro block vazio
         for (int i = 0; i < MAX_FILES; i++) {
-            if (superblock[i]block == 0) {//ninguem usando
-                fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, NULL);
+            if (superblock[i].block == 0) {//ninguem usando
+                fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), NULL);
                 break;
             }
         }
@@ -212,8 +215,8 @@ static int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
         //informações sobre os arquivos
         //Acha o primeiro block vazio
         for (int i = 0; i < MAX_FILES; i++) {
-            if (superblock[i]block == 0) {//ninguem usando
-                fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, NULL);
+            if (superblock[i].block == 0) {//ninguem usando
+                fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, time(NULL), NULL);
                 return 0;
             }
         }
@@ -248,8 +251,8 @@ static int create_apocalypsefs(const char *path, mode_t mode,
     //direitos e demais informações sobre os arquivos Acha o primeiro
     //block vazio
     for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block == 0) {//ninguem usando
-            fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, NULL);
+        if (superblock[i].block == 0) {//ninguem usando
+            fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, time(NULL), NULL);
             return 0;
         }
     }

@@ -14,6 +14,8 @@ typedef struct {
     uint16_t rights;
     uint16_t size;
     uint16_t block;
+
+    time_t time;
 } inode;
 
 /* Disco - A variável abaixo representa um disk que pode ser acessado
