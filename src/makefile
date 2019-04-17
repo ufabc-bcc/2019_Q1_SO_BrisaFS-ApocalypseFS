@@ -28,10 +28,8 @@ OUT = ./ap_out
 
 # Configures RUN
 ifndef MOUNT
-$(info Mounting directory not defined. Starting from TMP...)
 MOUNT = /tmp/apocalypse_mount
-$(shell mkdir $(MOUNT))
-else
+$(shell mkdir -m 777 $(MOUNT))
 endif
 
 default: $(TARGET)
@@ -49,3 +47,4 @@ run:
 
 clean:
 	@$(RM) *.run *.o *.out
+	$(info Done!)
