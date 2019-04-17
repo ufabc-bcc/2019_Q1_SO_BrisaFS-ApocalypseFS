@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-#include "../global_types/global_types.h"
+#include "../global_macros/global_macros.h"
 
 typedef char byte;
 
