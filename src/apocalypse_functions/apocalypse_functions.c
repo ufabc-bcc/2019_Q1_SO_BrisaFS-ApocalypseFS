@@ -15,7 +15,7 @@
 #include "apocalypse_functions.h"
 
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                     uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo) {
+                    uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo) {
     char *mnome = (char*)nome;
     //Joga fora a(s) barras iniciais
     while (mnome[0] != '\0' && mnome[0] == '/')
@@ -63,7 +63,7 @@ int compare_name (const char *a, const char *b) {
 
 //-------------------------------------------------------------------
 
-static int getattr_apocalypsefs(const char *path, struct stat *stbuf,
+int getattr_apocalypsefs(const char *path, struct stat *stbuf,
                            struct fuse_file_info *fi) {
     memset(stbuf, 0, sizeof(struct stat));
 
@@ -76,7 +76,7 @@ static int getattr_apocalypsefs(const char *path, struct stat *stbuf,
 
     //Busca arquivo na lista de inodes
     for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block != 0 //Bloco sendo usado
+        if (superblock[i].block != 0 //Bloco sendo usado
             && compare_name(superblock[i].name, path)) { //Nome bate
 
             stbuf->st_mode = S_IFREG | superblock[i].rights;
@@ -93,7 +93,7 @@ static int getattr_apocalypsefs(const char *path, struct stat *stbuf,
 
 //-------------------------------------------------------------------
 
-static int readdir_apocalypsefs(const char *path, void *buf, fuse_fill_dir_t filler,
+int readdir_apocalypsefs(const char *path, void *buf, fuse_fill_dir_t filler,
                            off_t offset, struct fuse_file_info *fi,
                            enum fuse_readdir_flags flags) {
     (void) offset;
@@ -103,7 +103,7 @@ static int readdir_apocalypsefs(const char *path, void *buf, fuse_fill_dir_t fil
     filler(buf, "..", NULL, 0, 0);
 
     for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block != 0) { //Bloco ocupado!
+        if (superblock[i].block != 0) { //Bloco ocupado!
             filler(buf, superblock[i].name, NULL, 0, 0);
         }
     }
@@ -113,18 +113,18 @@ static int readdir_apocalypsefs(const char *path, void *buf, fuse_fill_dir_t fil
 
 //-------------------------------------------------------------------
 
-static int open_apocalypsefs(const char *path, struct fuse_file_info *fi) {
+int open_apocalypsefs(const char *path, struct fuse_file_info *fi) {
     return 0;
 }
 
 //-------------------------------------------------------------------
 
-static int read_apocalypsefs(const char *path, char *buf, size_t size,
+int read_apocalypsefs(const char *path, char *buf, size_t size,
                         off_t offset, struct fuse_file_info *fi) {
 
     //Procura o arquivo
     for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block == 0) //block vazio
+        if (superblock[i].block == 0) //block vazio
             continue;
         if (compare_name(path, superblock[i].name)) {//achou!
             size_t len = superblock[i].size;
@@ -133,13 +133,13 @@ static int read_apocalypsefs(const char *path, char *buf, size_t size,
             }
             if (offset + size > len) {
                 memcpy(buf,
-                       disk + DISK_OFFSET(superblock[i]block),
+                       disk + DISK_OFFSET(superblock[i].block),
                        len - offset);
                 return len - offset;
             }
 
             memcpy(buf,
-                   disk + DISK_OFFSET(superblock[i]block), size);
+                   disk + DISK_OFFSET(superblock[i].block), size);
             return size;
         }
     }
@@ -149,7 +149,7 @@ static int read_apocalypsefs(const char *path, char *buf, size_t size,
 
 //-------------------------------------------------------------------
 
-static int write_apocalypsefs(const char *path, const char *buf, size_t size,
+int write_apocalypsefs(const char *path, const char *buf, size_t size,
                          off_t offset, struct fuse_file_info *fi) {
 
     for (int i = 0; i < MAX_FILES; i++) {
@@ -178,14 +178,14 @@ static int write_apocalypsefs(const char *path, const char *buf, size_t size,
 
 //-------------------------------------------------------------------
 
-static int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *fi) {
+int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *fi) {
     if (size > BLOCK_SIZE)
         return EFBIG;
 
     //procura o arquivo
     int findex = -1;
     for(int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i]block != 0
+        if (superblock[i].block != 0
             && compare_name(path, superblock[i].name)) {
             findex = i;
             break;
@@ -208,7 +208,7 @@ static int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_
 
 //-------------------------------------------------------------------
 
-static int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
+int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
     if (S_ISREG(mode)) { //So aceito criar arquivos normais
         //Cuidado! Não seta os direitos corretamente! Veja "man 2
         //mknod" para instruções de como pegar os direitos e demais
@@ -227,7 +227,7 @@ static int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
 
 //-------------------------------------------------------------------
 
-static int fsync_apocalypsefs(const char *path, int isdatasync,
+int fsync_apocalypsefs(const char *path, int isdatasync,
                          struct fuse_file_info *fi) {
     //Como tudo é em memória, não é preciso fazer nada.
     // Cuidado! Você vai precisar jogar tudo que está só em memóri no disk
@@ -236,7 +236,7 @@ static int fsync_apocalypsefs(const char *path, int isdatasync,
 
 //-------------------------------------------------------------------
 
-static int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
+int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
                            struct fuse_file_info *fi) {
     // Cuidado! O sistema BrisaFS não aceita horários. O seu deverá aceitar!
     return 0;
@@ -244,7 +244,7 @@ static int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
 
 //-------------------------------------------------------------------
 
-static int create_apocalypsefs(const char *path, mode_t mode,
+int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi) {
     //Cuidado! Está ignorando todos os parâmetros. O seu deverá
     //cuidar disso Veja "man 2 mknod" para instruções de como pegar os

@@ -2,6 +2,21 @@
 
 int main(int argc, char *argv[]) {
 
+    /* Esta estrutura contém os ponteiros para as operações implementadas
+    no FS */
+    struct fuse_operations fuse_apocalypsefs = {
+                                                .create = create_apocalypsefs,
+                                                .fsync = fsync_apocalypsefs,
+                                                .getattr = getattr_apocalypsefs,
+                                                .mknod = mknod_apocalypsefs,
+                                                .open = open_apocalypsefs,
+                                                .read = read_apocalypsefs,
+                                                .readdir = readdir_apocalypsefs,
+                                                .truncate	= truncate_apocalypsefs,
+                                                .utimens = utimens_apocalypsefs,
+                                                .write = write_apocalypsefs
+    };
+
     printf("Starting ApocalypseFS...\n");
     printf("\t Maximum file size = 1 block = %d bytes\n", BLOCK_SIZE);
     printf("\t Inode size : %lu\n", sizeof(inode));

@@ -1,6 +1,9 @@
 #ifndef GLOBAL_MACROS_H
 #define GLOBAL_MACROS_H
 
+// Defines compatible FUSE version
+#define FUSE_USE_VERSION 31
+
 /* Tamnanho do block do dispositivo */
 #define BLOCK_SIZE 4096
 /* A atual implementação utiliza apenas um block para todos os inodes
