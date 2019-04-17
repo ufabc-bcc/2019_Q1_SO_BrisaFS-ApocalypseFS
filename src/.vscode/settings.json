@@ -1,5 +1,12 @@
 {
     "files.associations": {
-        "apocalypse_main.h": "c"
+        "apocalypse_main.h": "c",
+        "apocalypse_functions.h": "c",
+        "fuse.h": "c",
+        "global_macros.h": "c",
+        "inttypes.h": "c",
+        "stdio.h": "c",
+        "errno.h": "c",
+        "fuse_common.h": "c"
     }
 }
