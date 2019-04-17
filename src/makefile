@@ -26,23 +26,26 @@ MOUNTC = -f -d -s
 # Output dir
 OUT = ./ap_out
 
+# Configures RUN
+ifndef MOUNT
+$(info Mounting directory not defined. Starting from TMP...)
+MOUNT = /tmp/apocalypse_mount
+$(shell mkdir $(MOUNT))
+else
+endif
+
 default: $(TARGET)
 
 $(TARGET): $(MAIN) $(FUNCTIONS_P).c
-	$(CC) $(CFLAGS) $(FUNCTIONS_P).c $(MAIN) -o $(TARGET) $(CONFIGS)
+	@$(CC) $(CFLAGS) $(FUNCTIONS_P).c $(MAIN) -o $(TARGET) $(CONFIGS)
+	$(info Completed!)
 
 #$(FUNCTIONS).o: $(FUNCTIONS_P).c
 #	$(CC) $(CFLAGS) $(FUNCTIONS_P).c -o $(FUNCTIONS).o $(CONFIGS)
 
 run:
-ifndef MOUNT
-$(info 'Mounting directory not defined. Starting from TMP...')
-MOUNT = /tmp/apocalypse_mount
-$(shell mkdir $(MOUNT))
-$(shell ./$(TARGET) $(MOUNTC) $(MOUNT))
-else
-$(shell ./$(TARGET) $(MOUNTC) $(MOUNT))
-endif
+	$(info ./$(TARGET) $(MOUNTC) $(MOUNT))
+	./$(TARGET) $(MOUNTC) $(MOUNT)
 
 clean:
-	$(RM) *.run *.o *.out
+	@$(RM) *.run *.o *.out
