@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <inttypes.h>
+#include <sys/stat.h>
 
 // Apocalypse FS implementation
 #include "global_macros/global_macros.h"

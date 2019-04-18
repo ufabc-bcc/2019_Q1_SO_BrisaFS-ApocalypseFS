@@ -1,3 +1,6 @@
+#ifndef APOCALYPSE_FUNCTIONS_H
+#define APOCALYPSE_FUNCTIONS_H
+
 /*
  * Emilio Francesquini <e.francesquini@ufabc.edu.br>
  * 2019-02-03
@@ -12,21 +15,21 @@
  *
  */
 
-#ifndef APOCALYPSE_FUNCTIONS_H
-#define APOCALYPSE_FUNCTIONS_H
-
+#include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-// #include <sys/stat.h>
 
 #include "../global_macros/global_macros.h"
 #include "../global_types/global_types.h"
 
 // Have to inclue after due to header definition
 #include <fuse3/fuse.h>
+
+/* Retorna o caminho para o arquivo dump */
+char * getDumpPath();
 
 /* Preenche os campos do superblock de índice isuperblock */
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
@@ -35,8 +38,8 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
 /* Para persistir o FS em um disk representado por um arquivo, talvez
    seja necessário "formatar" o arquivo pegando o seu tamanho e
    inicializando todas as posições (ou apenas o(s) superblock(s))
-   com os valores apropriados */
-void init_apocalypsefs();
+   com os valores apropriados. Retorna 1 caso obtenha sucesso ou 0, caso contrário*/
+int init_apocalypsefs();
 
 /* Devolve 1 caso representem o mesmo nome e 0 cc */
 int compare_name(const char *a, const char *b);

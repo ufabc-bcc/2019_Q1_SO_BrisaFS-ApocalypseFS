@@ -14,8 +14,18 @@
 
 #include "apocalypse_functions.h"
 
+char * getDumpPath(){char *filepath;
+    char *filename = "/dump.apocalypse";
+
+    filepath = malloc(strlen(getenv("HOME")) + strlen(filename) + 1);
+    strcpy(filepath, getenv("HOME"));
+    strcat(filepath, filename);
+
+    return filepath;
+}
+
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                    uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo) {
+                    uint16_t tamanho, uint16_t block, time_t current, const byte *conteudo) {
     char *mnome = (char*)nome;
     //Joga fora a(s) barras iniciais
     while (mnome[0] != '\0' && mnome[0] == '/')
@@ -25,8 +35,8 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
     superblock[isuperblock].rights = direitos;
     superblock[isuperblock].size = tamanho;
     superblock[isuperblock].block = block;
-    if (time) superblock[isuperblock].time = time;
-    
+    superblock[isuperblock].rTime = current;
+
     if (conteudo != NULL)
         memcpy(disk + DISK_OFFSET(block), conteudo, tamanho);
     else
@@ -35,15 +45,44 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
 
 //-------------------------------------------------------------------
 
-void init_apocalypsefs() {
+int init_apocalypsefs() {
     disk = calloc (MAX_BLOCKS, BLOCK_SIZE);
-    superblock = (inode*) disk; //posição 0
-    //Cria um arquivo na mão de boas vindas
-    char *nome = "UFABC SO 2019.txt";
-    //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
-    char *conteudo = "Adoro as aulas de SO da UFABC!\n";
-    //0 está sendo usado pelo superblock. O primeiro livre é o 1
-    fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, time(NULL), (byte*)conteudo);
+
+    char *filepath = getDumpPath();
+
+    printf("%s\n", filepath);
+
+    int fileID, ret;
+    struct stat buffer;
+    if (!stat(filepath, &buffer)){
+        printf("Opening persistent file...\n");
+        
+        if ((fileID = open(filepath, S_IRUSR)) < 0){
+            perror("It was not possible to open the existing file.\nClosing application.\n");
+            return 0;
+        }
+        if ((ret = read(fileID, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+            perror("Could not retrieve data from disk\n");
+            return 0;
+        }
+
+        printf("Dump file loaded successfully!");
+        // Referencia o bloco no disco
+        superblock = (inode*) disk; //posição 0
+    }
+    else{
+        // O superbloco continua com 0s e é iniciado normalmente
+        superblock = (inode*) disk; //posição 0
+
+        printf("No dump file has been found... Starting from zero\n");
+        //Cria um arquivo na mão de boas vindas
+        char *nome = "You're wellcome.txt";
+        //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
+        char *conteudo = "Bem vindo ao sistema de arquivos Apocalypse.\n";
+        //0 está sendo usado pelo superblock. O primeiro livre é o 1
+        fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, time(NULL), (byte*)conteudo);
+    }
+    return 1;
 }
 
 //-------------------------------------------------------------------
@@ -82,7 +121,9 @@ int getattr_apocalypsefs(const char *path, struct stat *stbuf,
             stbuf->st_mode = S_IFREG | superblock[i].rights;
             stbuf->st_nlink = 1;
             stbuf->st_size = superblock[i].size;
-            stbuf->st_ctime = superblock[i].time;
+            stbuf->st_ctime = superblock[i].rTime; // Last status change time
+            stbuf->st_mtime = superblock[i].rTime; // Modification time
+            // stbuf->st_atime = superblock[i].rTime; // Access time
             return 0; //OK, arquivo encontrado
         }
     }
