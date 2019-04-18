@@ -29,7 +29,8 @@ OUT = ./ap_out
 # Configures RUN
 ifndef MOUNT
 MOUNT = /tmp/apocalypse_mount
-$(shell mkdir -m 777 $(MOUNT))
+$(shell mkdir -m 777 -p $(MOUNT))
+# $(shell [ ! -d $(MOUNT) ] && mkdir -m 777 -p $(MOUNT))
 endif
 
 default: $(TARGET)
