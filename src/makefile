@@ -42,7 +42,6 @@ $(TARGET): $(MAIN) $(FUNCTIONS_P).c
 #	$(CC) $(CFLAGS) $(FUNCTIONS_P).c -o $(FUNCTIONS).o $(CONFIGS)
 
 run:
-	$(info ./$(TARGET) $(MOUNTC) $(MOUNT))
 	./$(TARGET) $(MOUNTC) $(MOUNT)
 
 clean:
