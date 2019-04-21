@@ -33,6 +33,8 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
 
     strcpy(superblock[isuperblock].name, mnome);
     superblock[isuperblock].rights = direitos;
+    superblock[isuperblock].group = getgid();
+    superblock[isuperblock].user = getuid();
     superblock[isuperblock].size = tamanho;
     superblock[isuperblock].block = block;
     superblock[isuperblock].rTime = current;
@@ -102,13 +104,55 @@ int compare_name (const char *a, const char *b) {
 
 //-------------------------------------------------------------------
 
+int chmod_apocalypsefs(const char *path, mode_t mode, struct fuse_file_info *fi){
+    //Diretório raiz
+    if (strcmp(path, "/") == 0) {
+        return -EPERM; // Operação não permitida na raíz do diretório
+    }
+
+    //Busca arquivo na lista de inodes
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block != 0 //Bloco sendo usado
+            && compare_name(superblock[i].name, path)) { //Nome bate
+            superblock[i].rights = mode;
+            return 0; //OK, arquivo encontrado
+        }
+    }
+
+    return -ENOENT;
+}
+
+//-------------------------------------------------------------------
+
+int chown_apocalypsefs(const char *path, uid_t user_id, gid_t group_id,
+                        struct fuse_file_info *fi){
+    //Diretório raiz
+    if (strcmp(path, "/") == 0) {
+        return -EPERM; // Operação não permitida na raíz do diretório
+    }
+
+    //Busca arquivo na lista de inodes
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block != 0 //Bloco sendo usado
+            && compare_name(superblock[i].name, path)) { //Nome bate
+            if (user_id != -1) superblock[i].user = user_id; //Se for igual à -1, não foi fornecido
+            if (group_id != -1) superblock[i].group = group_id; //Se for igual à -1, não foi fornecido
+            return 0; //OK, arquivo encontrado
+        }
+    }
+
+    return -ENOENT;
+}
+
+//-------------------------------------------------------------------
+
 int getattr_apocalypsefs(const char *path, struct stat *stbuf,
                            struct fuse_file_info *fi) {
     memset(stbuf, 0, sizeof(struct stat));
 
     //Diretório raiz
     if (strcmp(path, "/") == 0) {
-        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_mode = __S_IFDIR | 0755;
         stbuf->st_nlink = 2;
         return 0;
     }
@@ -118,8 +162,10 @@ int getattr_apocalypsefs(const char *path, struct stat *stbuf,
         if (superblock[i].block != 0 //Bloco sendo usado
             && compare_name(superblock[i].name, path)) { //Nome bate
 
-            stbuf->st_mode = S_IFREG | superblock[i].rights;
+            stbuf->st_mode = __S_IFREG | superblock[i].rights;
             stbuf->st_nlink = 1;
+            stbuf->st_uid = superblock[i].user;
+            stbuf->st_gid = superblock[i].group;
             stbuf->st_size = superblock[i].size;
             stbuf->st_ctime = superblock[i].rTime; // Last status change time
             stbuf->st_mtime = superblock[i].rTime; // Modification time

@@ -11,6 +11,8 @@ typedef char byte;
    por exemplo nome, direitos, tamanho, block inicial, ... */
 typedef struct {
     char name[250];
+    uint16_t user;
+    uint16_t group;
     uint16_t rights;
     uint16_t size;
     uint16_t block;

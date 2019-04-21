@@ -54,6 +54,8 @@ int main(int argc, char *argv[]) {
                                                 .create = create_apocalypsefs,
                                                 .fsync = fsync_apocalypsefs,
                                                 .getattr = getattr_apocalypsefs,
+                                                .chmod = chmod_apocalypsefs,
+                                                .chown = chown_apocalypsefs,
                                                 .mknod = mknod_apocalypsefs,
                                                 .open = open_apocalypsefs,
                                                 .read = read_apocalypsefs,
