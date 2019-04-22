@@ -54,20 +54,21 @@ int init_apocalypsefs() {
 
     printf("%s\n", filepath);
 
-    int fileID, ret;
+    int fd, ret;
     struct stat buffer;
     if (!stat(filepath, &buffer)){
         printf("Opening persistent file...\n");
         
-        if ((fileID = open(filepath, S_IRUSR)) < 0){
+        if ((fd = open(filepath, O_RDONLY)) < 0){
             perror("It was not possible to open the existing file.\nClosing application.\n");
             return 0;
         }
-        if ((ret = read(fileID, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+        if ((ret = read(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
             perror("Could not retrieve data from disk\n");
             return 0;
         }
-
+        
+        close(fd);
         printf("Dump file loaded successfully!");
         // Referencia o bloco no disco
         superblock = (inode*) disk; //posição 0
@@ -81,10 +82,52 @@ int init_apocalypsefs() {
         char *nome = "You're wellcome.txt";
         //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
         char *conteudo = "Bem vindo ao sistema de arquivos Apocalypse.\n";
-        //0 está sendo usado pelo superblock. O primeiro livre é o 1
+        //0 está sendo usado pelo superblock.fileID O primeiro livre é o 1
         fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, time(NULL), (byte*)conteudo);
     }
     return 1;
+}
+
+//-------------------------------------------------------------------
+
+int save_apocalypsefs_instance(){
+    printf("\n\n ApocalypseFS is about to finnish... \n"); 
+
+    char * filepath = getDumpPath();
+    printf("Dump file (preview): %s\n", filepath);
+
+    int fd, ret;
+    if ((fd = open(filepath, O_WRONLY)) == -1){
+        printf("Trying to create persistent file...\n");
+
+        if ((fd = creat(filepath, S_IRUSR | S_IWUSR)) < 0){
+            perror("Error in file creation process\n");
+            return 10;
+        }
+
+        if ((ret = write(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+            perror("Could not write data to disk at the momment!\n");
+            return 10;
+        }
+        else if (ftruncate(fd, MAX_BLOCKS * BLOCK_SIZE)){
+            perror("Could not truncate file... Finishing...\n");
+            return 10;
+        }
+
+        printf("Memmory dumped successfully!\n");
+    }
+    else {
+        // Dump file already exists!
+        if ((ret = write(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+            perror("Could not write data to disk at the momment!\n");
+            return 10;
+        }
+
+        printf("Memmory dumped successfully!\n");
+    }
+
+    close(fd);
+    return 0;
 }
 
 //-------------------------------------------------------------------

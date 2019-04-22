@@ -42,6 +42,12 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
    com os valores apropriados. Retorna 1 caso obtenha sucesso ou 0, caso contrário*/
 int init_apocalypsefs();
 
+
+/* A fim de persistir os arquivos no disco, é necessário que seja executada esta
+    função assim que o loop principal do FUSE for interrompido. Retorna 0 ou, caso 
+    haja algum erro, 10 */
+int save_apocalypsefs_instance();
+
 /* Devolve 1 caso representem o mesmo nome e 0 cc */
 int compare_name(const char *a, const char *b);
 
