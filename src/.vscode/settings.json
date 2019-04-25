@@ -11,6 +11,7 @@
         "stat.h": "c",
         "global_types.h": "c",
         "time.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "fuse_lowlevel.h": "c"
     }
 }

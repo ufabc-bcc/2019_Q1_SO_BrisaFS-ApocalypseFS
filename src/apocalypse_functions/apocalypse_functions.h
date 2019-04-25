@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #include "../global_macros/global_macros.h"
 #include "../global_types/global_types.h"
@@ -41,8 +42,23 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
    com os valores apropriados. Retorna 1 caso obtenha sucesso ou 0, caso contrário*/
 int init_apocalypsefs();
 
+
+/* A fim de persistir os arquivos no disco, é necessário que seja executada esta
+    função assim que o loop principal do FUSE for interrompido. Retorna 0 ou, caso 
+    haja algum erro, 10 */
+int save_apocalypsefs_instance();
+
 /* Devolve 1 caso representem o mesmo nome e 0 cc */
 int compare_name(const char *a, const char *b);
+
+/* A função chmod_apocalypsefs modifica as permissões de um arquivo.
+   Como os diretórios não foram implementados, ela ignora até mesmo
+   a raíz, mantendo-a com a permissão 0755 */
+int chmod_apocalypsefs(const char *path, mode_t mode, struct fuse_file_info *fi);
+
+/* A função chown_apocalypsefs modifica o usuário proprietário do arquivo. */
+int chown_apocalypsefs(const char *path, uid_t user_id, gid_t group_id,
+                        struct fuse_file_info *fi);
 
 /* A função getattr_apocalypsefs devolve os metadados de um arquivo cujo
    caminho é dado por path. Devolve 0 em caso de sucesso ou um código

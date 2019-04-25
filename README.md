@@ -12,6 +12,7 @@
 ## Baixando, compilando e executando
 
 Para um tutorial completo (e genérico), basta acessar o site: [git - the simple guide - no deep shit!](http://rogerdudler.github.io/git-guide/)
+
 Detalhes específicos do projeto disponíveis em: [Projeto de Programação](http://professor.ufabc.edu.br/~e.francesquini/2019.q1.so/projeto/)
 
 ### Baixando

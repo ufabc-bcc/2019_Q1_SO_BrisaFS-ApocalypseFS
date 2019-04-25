@@ -24,6 +24,8 @@ char * getDumpPath(){char *filepath;
     return filepath;
 }
 
+//-------------------------------------------------------------------
+
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
                     uint16_t tamanho, uint16_t block, time_t current, const byte *conteudo) {
     char *mnome = (char*)nome;
@@ -33,6 +35,8 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
 
     strcpy(superblock[isuperblock].name, mnome);
     superblock[isuperblock].rights = direitos;
+    superblock[isuperblock].group = getgid();
+    superblock[isuperblock].user = getuid();
     superblock[isuperblock].size = tamanho;
     superblock[isuperblock].block = block;
     superblock[isuperblock].rTime = current;
@@ -52,20 +56,21 @@ int init_apocalypsefs() {
 
     printf("%s\n", filepath);
 
-    int fileID, ret;
+    int fd, ret;
     struct stat buffer;
     if (!stat(filepath, &buffer)){
         printf("Opening persistent file...\n");
         
-        if ((fileID = open(filepath, S_IRUSR)) < 0){
+        if ((fd = open(filepath, O_RDONLY)) < 0){
             perror("It was not possible to open the existing file.\nClosing application.\n");
             return 0;
         }
-        if ((ret = read(fileID, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+        if ((ret = read(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
             perror("Could not retrieve data from disk\n");
             return 0;
         }
-
+        
+        close(fd);
         printf("Dump file loaded successfully!");
         // Referencia o bloco no disco
         superblock = (inode*) disk; //posição 0
@@ -79,10 +84,52 @@ int init_apocalypsefs() {
         char *nome = "You're wellcome.txt";
         //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
         char *conteudo = "Bem vindo ao sistema de arquivos Apocalypse.\n";
-        //0 está sendo usado pelo superblock. O primeiro livre é o 1
+        //0 está sendo usado pelo superblock.fileID O primeiro livre é o 1
         fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, time(NULL), (byte*)conteudo);
     }
     return 1;
+}
+
+//-------------------------------------------------------------------
+
+int save_apocalypsefs_instance(){
+    printf("\n\n ApocalypseFS is about to finish... \n"); 
+
+    char * filepath = getDumpPath();
+    printf("Dump file (preview): %s\n", filepath);
+
+    int fd, ret;
+    if ((fd = open(filepath, O_WRONLY)) == -1){
+        printf("Trying to create persistent file...\n");
+
+        if ((fd = creat(filepath, S_IRUSR | S_IWUSR)) < 0){
+            perror("Error in file creation process\n");
+            return 10;
+        }
+
+        if ((ret = write(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+            perror("Could not write data to disk at the moment!\n");
+            return 10;
+        }
+        else if (ftruncate(fd, MAX_BLOCKS * BLOCK_SIZE)){
+            perror("Could not truncate file... Finishing...\n");
+            return 10;
+        }
+
+        printf("Memory dumped successfully!\n");
+    }
+    else {
+        // Dump file already exists!
+        if ((ret = write(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
+            perror("Could not write data to disk at the moment!\n");
+            return 10;
+        }
+
+        printf("Memory dumped successfully!\n");
+    }
+
+    close(fd);
+    return 0;
 }
 
 //-------------------------------------------------------------------
@@ -102,13 +149,55 @@ int compare_name (const char *a, const char *b) {
 
 //-------------------------------------------------------------------
 
+int chmod_apocalypsefs(const char *path, mode_t mode, struct fuse_file_info *fi){
+    //Diretório raiz
+    if (strcmp(path, "/") == 0) {
+        return -EPERM; // Operação não permitida na raíz do diretório
+    }
+
+    //Busca arquivo na lista de inodes
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block != 0 //Bloco sendo usado
+            && compare_name(superblock[i].name, path)) { //Nome bate
+            superblock[i].rights = mode;
+            return 0; //OK, arquivo encontrado
+        }
+    }
+
+    return -ENOENT;
+}
+
+//-------------------------------------------------------------------
+
+int chown_apocalypsefs(const char *path, uid_t user_id, gid_t group_id,
+                        struct fuse_file_info *fi){
+    //Diretório raiz
+    if (strcmp(path, "/") == 0) {
+        return -EPERM; // Operação não permitida na raíz do diretório
+    }
+
+    //Busca arquivo na lista de inodes
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block != 0 //Bloco sendo usado
+            && compare_name(superblock[i].name, path)) { //Nome bate
+            if (user_id != -1) superblock[i].user = user_id; //Se for igual à -1, não foi fornecido
+            if (group_id != -1) superblock[i].group = group_id; //Se for igual à -1, não foi fornecido
+            return 0; //OK, arquivo encontrado
+        }
+    }
+
+    return -ENOENT;
+}
+
+//-------------------------------------------------------------------
+
 int getattr_apocalypsefs(const char *path, struct stat *stbuf,
                            struct fuse_file_info *fi) {
     memset(stbuf, 0, sizeof(struct stat));
 
     //Diretório raiz
     if (strcmp(path, "/") == 0) {
-        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_mode = __S_IFDIR | 0755;
         stbuf->st_nlink = 2;
         return 0;
     }
@@ -118,8 +207,10 @@ int getattr_apocalypsefs(const char *path, struct stat *stbuf,
         if (superblock[i].block != 0 //Bloco sendo usado
             && compare_name(superblock[i].name, path)) { //Nome bate
 
-            stbuf->st_mode = S_IFREG | superblock[i].rights;
+            stbuf->st_mode = __S_IFREG | superblock[i].rights;
             stbuf->st_nlink = 1;
+            stbuf->st_uid = superblock[i].user;
+            stbuf->st_gid = superblock[i].group;
             stbuf->st_size = superblock[i].size;
             stbuf->st_ctime = superblock[i].rTime; // Last status change time
             stbuf->st_mtime = superblock[i].rTime; // Modification time
@@ -299,3 +390,5 @@ int create_apocalypsefs(const char *path, mode_t mode,
     }
     return ENOSPC;
 }
+
+//-------------------------------------------------------------------
