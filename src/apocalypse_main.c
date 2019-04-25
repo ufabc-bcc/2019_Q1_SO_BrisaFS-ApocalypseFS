@@ -59,8 +59,11 @@ int main(int argc, char *argv[]) {
                                                 .read = read_apocalypsefs,
                                                 .readdir = readdir_apocalypsefs,
                                                 .truncate	= truncate_apocalypsefs,
+						//Adcionar a operação unlink
+                                                .unlink = unlink_apocalypsefs,
                                                 .utimens = utimens_apocalypsefs,
                                                 .write = write_apocalypsefs
+						
     };
 
     printf("Starting ApocalypseFS...\n");
