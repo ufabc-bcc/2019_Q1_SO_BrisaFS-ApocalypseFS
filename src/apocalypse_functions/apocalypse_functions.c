@@ -83,7 +83,7 @@ int init_apocalypsefs() {
         //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
         char *conteudo = "Bem vindo ao sistema de arquivos Apocalypse.\n";
         //0 está sendo usado pelo superblock.fileID O primeiro livre é o 1
-        fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 1, time(NULL), (byte*)conteudo);
+        fill_block(0, nome, DEFAULT_RIGHTS, strlen(conteudo), 0, time(NULL), (byte*)conteudo);
     }
     return 1;
 }
@@ -297,7 +297,7 @@ int write_apocalypsefs(const char *path, const char *buf, size_t size,
     //Acha o primeiro block vazio
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) {//ninguem usando
-            fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), buf);
+            fill_block (i, path, DEFAULT_RIGHTS, size, i, time(NULL), buf);
             return size;
         }
     }
@@ -328,7 +328,7 @@ int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *f
         //Acha o primeiro block vazio
         for (int i = 0; i < MAX_FILES; i++) {
             if (superblock[i].block == 0) {//ninguem usando
-                fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), NULL);
+                fill_block (i, path, DEFAULT_RIGHTS, size, i, time(NULL), NULL);
                 break;
             }
         }
@@ -346,7 +346,7 @@ int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
         //Acha o primeiro block vazio
         for (int i = 0; i < MAX_FILES; i++) {
             if (superblock[i].block == 0) {//ninguem usando
-                fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, time(NULL), NULL);
+                fill_block (i, path, DEFAULT_RIGHTS, 0, i, time(NULL), NULL);
                 return 0;
             }
         }
@@ -382,7 +382,7 @@ int create_apocalypsefs(const char *path, mode_t mode,
     //block vazio
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) {//ninguem usando
-            fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, time(NULL), NULL);
+            fill_block (i, path, DEFAULT_RIGHTS, 0, i, time(NULL), NULL);
             return 0;
         }
     }
