@@ -91,7 +91,7 @@ int init_apocalypsefs() {
 //-------------------------------------------------------------------
 
 int save_apocalypsefs_instance(){
-    printf("\n\n ApocalypseFS is about to finnish... \n"); 
+    printf("\n\n ApocalypseFS is about to finish... \n"); 
 
     char * filepath = getDumpPath();
     printf("Dump file (preview): %s\n", filepath);
@@ -106,7 +106,7 @@ int save_apocalypsefs_instance(){
         }
 
         if ((ret = write(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
-            perror("Could not write data to disk at the momment!\n");
+            perror("Could not write data to disk at the moment!\n");
             return 10;
         }
         else if (ftruncate(fd, MAX_BLOCKS * BLOCK_SIZE)){
@@ -114,16 +114,16 @@ int save_apocalypsefs_instance(){
             return 10;
         }
 
-        printf("Memmory dumped successfully!\n");
+        printf("Memory dumped successfully!\n");
     }
     else {
         // Dump file already exists!
         if ((ret = write(fd, disk, MAX_BLOCKS * BLOCK_SIZE)) == -1){
-            perror("Could not write data to disk at the momment!\n");
+            perror("Could not write data to disk at the moment!\n");
             return 10;
         }
 
-        printf("Memmory dumped successfully!\n");
+        printf("Memory dumped successfully!\n");
     }
 
     close(fd);
