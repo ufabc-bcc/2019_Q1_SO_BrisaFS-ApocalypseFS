@@ -116,4 +116,9 @@ int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
 int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi);
 
+/*Deleta o Arquivo apontado pelo path, caso o arquivo nao existir, apresenta um erro na maquina */
+
+int unlink_apocalypsefs(const char *path);
+
 #endif // APOCALYPSE_FUNCTIONS_H
+
