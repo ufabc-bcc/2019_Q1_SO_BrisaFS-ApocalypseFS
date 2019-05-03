@@ -393,22 +393,17 @@ int create_apocalypsefs(const char *path, mode_t mode,
 }
 
 //-------------------------------------------------------------------
-/*------------------------------------------------------------------
-
-                        PARTE UNLINK ADICIONADA
-*/
 int unlink_apocalypsefs(const char *path){
 
-	  //Procura o arquivo
+	//Procura o arquivo
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) //block vazio
             continue;
         if (compare_name(path, superblock[i].name)) {//achou!
-         fill_block(i,path, 0, 0, 0, time(NULL), NULL);
-         return 0;
+            superblock[i].block = 0;
+            return 0;
         }
         
     }
-    return -errno;
+    return -ENOENT;
 }
-

@@ -13,8 +13,7 @@ int main(int argc, char *argv[]) {
                                                 .open = open_apocalypsefs,
                                                 .read = read_apocalypsefs,
                                                 .readdir = readdir_apocalypsefs,
-                                                .truncate	= truncate_apocalypsefs,
-						//Adcionar a operação unlink
+                                                .truncate = truncate_apocalypsefs,
                                                 .unlink = unlink_apocalypsefs,
                                                 .utimens = utimens_apocalypsefs,
                                                 .write = write_apocalypsefs

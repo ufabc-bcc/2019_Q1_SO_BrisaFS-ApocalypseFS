@@ -116,7 +116,10 @@ int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
 int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi);
 
-/*Deleta o Arquivo apontado pelo path, caso o arquivo nao existir, apresenta um erro na maquina */
+/* Deleta o arquivo apontado por path. Se o arquivo não existir,
+   retorna erro.
+   É importante notar que o arquivo não é efetivamente apagado.
+   Apenas o bloco apontado pelo inode é redefinido */
 
 int unlink_apocalypsefs(const char *path);
 
