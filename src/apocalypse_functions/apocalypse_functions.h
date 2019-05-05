@@ -34,7 +34,10 @@ char * getDumpPath();
 
 /* Preenche os campos do superblock de índice isuperblock */
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                     uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo);
+                     uint32_t tamanho, uint32_t block, time_t time, const byte *conteudo);
+
+
+uint32_t find_empty_inode();
 
 /* Para persistir o FS em um disk representado por um arquivo, talvez
    seja necessário "formatar" o arquivo pegando o seu tamanho e
@@ -116,4 +119,12 @@ int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
 int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi);
 
+/* Deleta o arquivo apontado por path. Se o arquivo não existir,
+   retorna erro.
+   É importante notar que o arquivo não é efetivamente apagado.
+   Apenas o bloco apontado pelo inode é redefinido */
+
+int unlink_apocalypsefs(const char *path);
+
 #endif // APOCALYPSE_FUNCTIONS_H
+

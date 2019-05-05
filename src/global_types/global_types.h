@@ -14,9 +14,11 @@ typedef struct {
     uint16_t user;
     uint16_t group;
     uint16_t rights;
-    uint16_t size;
-    uint16_t block;
+    uint32_t size;
+    uint32_t block;
 
+    
+    uint32_t next;
     time_t rTime;
 } inode;
 

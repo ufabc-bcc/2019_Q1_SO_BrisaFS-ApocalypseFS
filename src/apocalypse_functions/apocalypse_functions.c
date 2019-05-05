@@ -1,3 +1,4 @@
+
 /*
  * Emilio Francesquini <e.francesquini@ufabc.edu.br>
  * 2019-02-03
@@ -26,9 +27,21 @@ char * getDumpPath(){char *filepath;
 
 //-------------------------------------------------------------------
 
+uint32_t find_empty_inode(){
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block == 0) {//ninguem usando
+            return i;
+        }
+    }
+    return 0;
+}
+
+
+
 void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                    uint16_t tamanho, uint16_t block, time_t current, const byte *conteudo) {
+                    uint32_t tamanho, uint32_t block, time_t current, const byte *conteudo) {
     char *mnome = (char*)nome;
+    uint32_t empty;
     //Joga fora a(s) barras iniciais
     while (mnome[0] != '\0' && mnome[0] == '/')
         mnome++;
@@ -40,9 +53,34 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
     superblock[isuperblock].size = tamanho;
     superblock[isuperblock].block = block;
     superblock[isuperblock].rTime = current;
+    superblock[isuperblock].next = 0;
+    
 
-    if (conteudo != NULL)
+    if (conteudo != NULL){
+        while(tamanho > BLOCK_SIZE){
+                    empty = find_empty_inode();
+
+                    memcpy(disk + DISK_OFFSET(block), conteudo, BLOCK_SIZE);
+                    superblock[isuperblock].next = empty;
+
+                    isuperblock = empty;
+                    tamanho -= BLOCK_SIZE;
+
+                    strcpy(superblock[isuperblock].name, "\0"); // o nome ser nulo que indicará que o bloco
+                    superblock[isuperblock].rights = direitos;
+                    superblock[isuperblock].group = 0;
+                    superblock[isuperblock].user = 0;
+                    superblock[isuperblock].size = tamanho;
+                    superblock[isuperblock].block = empty + 1;
+                    superblock[isuperblock].rTime = 0;
+                    superblock[isuperblock].next = 0;
+                    
+
+                    block = empty+1;
+                } 
+
         memcpy(disk + DISK_OFFSET(block), conteudo, tamanho);
+    }
     else
         memset(disk + DISK_OFFSET(block), 0, tamanho);
 }
@@ -255,23 +293,44 @@ int read_apocalypsefs(const char *path, char *buf, size_t size,
                         off_t offset, struct fuse_file_info *fi) {
 
     //Procura o arquivo
+    uint32_t to_read = 0;
+    uint32_t node = 0;
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) //block vazio
             continue;
         if (compare_name(path, superblock[i].name)) {//achou!
+            
+            node = i;
             size_t len = superblock[i].size;
-            if (offset >= len) {//tentou ler além do fim do arquivo
-                return 0;
+            size = offset + size > len ? len - offset:size;//garantia que não lerá além do final do arquivo
+            to_read = size;
+
+            uint32_t offset_holder = offset;
+            for(int j = 0; j<offset_holder/BLOCK_SIZE;j++){
+                node = superblock[node].next;
+                offset -= BLOCK_SIZE;
+                puts("entrei no for ************************************************************************************");
             }
-            if (offset + size > len) {
-                memcpy(buf,
-                       disk + DISK_OFFSET(superblock[i].block),
-                       len - offset);
-                return len - offset;
+
+
+            while(to_read){
+                if(offset+to_read <= BLOCK_SIZE ){
+                    memcpy(buf, disk + DISK_OFFSET(superblock[node].block) + offset, to_read);
+                    puts("entrei no if ************************************************************************************");
+                    return size;
+                }else{
+                    memcpy(buf, disk + DISK_OFFSET(superblock[node].block)+offset, BLOCK_SIZE - offset);
+                    to_read -= BLOCK_SIZE - offset;
+                    buf += BLOCK_SIZE - offset;
+                    node = superblock[node].next;
+                    offset = 0;
+                    puts("entrei no ELSE ************************************************************************************");
+                }
+                
             }
 
             memcpy(buf,
-                   disk + DISK_OFFSET(superblock[i].block), size);
+                   disk + DISK_OFFSET(superblock[node].block), to_read);
             return size;
         }
     }
@@ -279,31 +338,68 @@ int read_apocalypsefs(const char *path, char *buf, size_t size,
     return -ENOENT;
 }
 
+
 //-------------------------------------------------------------------
 
 int write_apocalypsefs(const char *path, const char *buf, size_t size,
                          off_t offset, struct fuse_file_info *fi) {
-
+    uint32_t empty = 0;
+    uint32_t block = 0;
+    uint32_t write = 0;
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) { //block vazio
             continue;
         }
-        if (compare_name(path, superblock[i].name)) {//achou!
-            // Cuidado! Não checa se a quantidade de bytes cabe no arquivo!
-            memcpy(disk + DISK_OFFSET(superblock[i].block) + offset, buf, size);
-            superblock[i].size = offset + size;
-            return size;
+        if (compare_name(path, superblock[i].name)) {
+            block = i;
+            
+            uint32_t offset_holder = offset;
+            for(int j = 0; j<offset_holder/BLOCK_SIZE;j++){
+                if(superblock[block].next){
+                    block = superblock[block].next;
+                    offset -= BLOCK_SIZE;
+                }
+            }
+            //chegando aqui significa que percorreu o offset até chegar no bloco que vai de fato começar a escrever
+            write = size;
+            while(write){
+                if(offset+write <= BLOCK_SIZE ){
+                    memcpy(disk + DISK_OFFSET(superblock[block].block) + offset, buf, write);
+                    write = 0;
+                }else{
+                    memcpy(disk + DISK_OFFSET(superblock[block].block) + offset, buf, BLOCK_SIZE - offset);
+                    write -= BLOCK_SIZE - offset;
+                    buf += BLOCK_SIZE - offset;
+                    offset = 0;
+
+                    if(superblock[block].next){//caso onde não é o último bloco do arquivo
+                        block = superblock[block].next;
+                    }else{
+                        superblock[block].next = find_empty_inode();
+                        block = superblock[block].next;
+
+                        strcpy(superblock[block].name, "\0"); // o nome ser nulo que indicará que o bloco
+                        superblock[block].size = size;
+                        superblock[block].block = block + 1;
+                        superblock[block].rTime = 0;
+                        superblock[block].next = 0;
+        
+                    }
+                }  
+            }
+            superblock[i].size = offset + size > superblock[i].size ? offset + size:superblock[i].size;
+            return size;   
         }
     }
     //Se chegou aqui não achou. Entao cria
     //Acha o primeiro block vazio
-    for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i].block == 0) {//ninguem usando
-            fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), buf);
-            return size;
-        }
+    empty = find_empty_inode();
+    
+    if (empty) {//ninguem usando
+        fill_block (empty, path, DEFAULT_RIGHTS, size, empty+1, time(NULL), buf);
+        return size;
     }
-
+    
     return -EIO;
 }
 
@@ -392,3 +488,22 @@ int create_apocalypsefs(const char *path, mode_t mode,
 }
 
 //-------------------------------------------------------------------
+int unlink_apocalypsefs(const char *path){
+
+	//Procura o arquivo
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block == 0) //block vazio
+            continue;
+        if (compare_name(path, superblock[i].name)) {//achou!
+            superblock[i].block = 0;
+
+            while(superblock[i].next){
+                i = superblock[i].next;
+                superblock[i].block = 0;
+            }
+            return 0;
+        }
+        
+    }
+    return -ENOENT;
+}
