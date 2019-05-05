@@ -44,4 +44,4 @@ int setDirProperties(const char *filePath, unsigned int index);
 
 char * baseFileName(const char *filePath);
 
-#endif // !DIR_FUNCTIONS_H
+#endif // DIR_FUNCTIONS_H

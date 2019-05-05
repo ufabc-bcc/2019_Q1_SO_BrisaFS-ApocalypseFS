@@ -17,6 +17,7 @@ typedef struct {
     uint32_t size;
     uint32_t block;
 
+    uint32_t next;
     time_t rTime;
 
     byte isDir;
@@ -31,4 +32,4 @@ byte *disk;
 //guarda os inodes dos arquivos
 inode *superblock;
 
-#endif // #GLOBAL_TYPES_H
+#endif // GLOBAL_TYPES_H

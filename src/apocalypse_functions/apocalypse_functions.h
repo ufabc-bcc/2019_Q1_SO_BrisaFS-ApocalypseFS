@@ -25,17 +25,11 @@
 
 #include "../global_macros/global_macros.h"
 #include "../global_types/global_types.h"
+#include "../global_utilities/global_utilities.h"
 #include "../dir_functions/dir_functions.h"
 
 // Have to inclue after due to header definition
 #include <fuse3/fuse.h>
-
-/* Retorna o caminho para o arquivo dump */
-char * getDumpPath();
-
-/* Preenche os campos do superblock de índice isuperblock */
-void fill_block (int isuperblock, const char *nome, uint32_t direitos,
-                     uint32_t tamanho, uint32_t block, time_t time, const byte *conteudo);
 
 /* Para persistir o FS em um disk representado por um arquivo, talvez
    seja necessário "formatar" o arquivo pegando o seu tamanho e
@@ -48,9 +42,6 @@ int init_apocalypsefs();
     função assim que o loop principal do FUSE for interrompido. Retorna 0 ou, caso 
     haja algum erro, 10 */
 int save_apocalypsefs_instance();
-
-/* Devolve 1 caso representem o mesmo nome e 0 cc */
-int compare_name(const char *a, const char *b);
 
 /* A função chmod_apocalypsefs modifica as permissões de um arquivo.
    Como os diretórios não foram implementados, ela ignora até mesmo

@@ -14,39 +14,6 @@
 
 #include "apocalypse_functions.h"
 
-char * getDumpPath(){char *filepath;
-    char *filename = "/dump.apocalypse";
-
-    filepath = malloc(strlen(getenv("HOME")) + strlen(filename) + 1);
-    strcpy(filepath, getenv("HOME"));
-    strcat(filepath, filename);
-
-    return filepath;
-}
-
-//-------------------------------------------------------------------
-
-void fill_block (int isuperblock, const char *nome, uint32_t direitos,
-                    uint32_t tamanho, uint32_t block, time_t current, const byte *conteudo) {
-    char *mnome = (char*)nome;
-
-    strcpy(superblock[isuperblock].name, mnome);
-    superblock[isuperblock].rights = direitos;
-    superblock[isuperblock].group = getgid();
-    superblock[isuperblock].user = getuid();
-    superblock[isuperblock].size = tamanho;
-    superblock[isuperblock].block = block;
-    superblock[isuperblock].rTime = current;
-    superblock[isuperblock].isDir = 0;
-
-    if (conteudo != NULL)
-        memcpy(disk + DISK_OFFSET(block), conteudo, tamanho);
-    else
-        memset(disk + DISK_OFFSET(block), 0, tamanho);
-}
-
-//-------------------------------------------------------------------
-
 int init_apocalypsefs() {
     disk = calloc (MAX_BLOCKS, BLOCK_SIZE);
 
@@ -128,21 +95,6 @@ int save_apocalypsefs_instance(){
 
     close(fd);
     return 0;
-}
-
-//-------------------------------------------------------------------
-
-int compare_name (const char *a, const char *b) {
-    char *ma = (char*)a;
-    char *mb = (char*)b;
-    //Joga fora barras iniciais
-    while (ma[0] != '\0' && ma[0] == '/')
-        ma++;
-    while (mb[0] != '\0' && mb[0] == '/')
-        mb++;
-    //Cuidado! Pode ser necessário jogar fora também barras repetidas internas
-    //quando tiver diretórios
-    return strcmp(ma, mb) == 0;
 }
 
 //-------------------------------------------------------------------
@@ -267,23 +219,41 @@ int read_apocalypsefs(const char *path, char *buf, size_t size,
                         off_t offset, struct fuse_file_info *fi) {
 
     //Procura o arquivo
+    uint32_t to_read = 0;
+    uint32_t node = 0;
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) //block vazio
             continue;
         if (compare_name(path, superblock[i].name)) {//achou!
+            
+            node = i;
             size_t len = superblock[i].size;
-            if (offset >= len) {//tentou ler além do fim do arquivo
-                return 0;
+            size = offset + size > len ? len - offset:size;//garantia que não lerá além do final do arquivo
+            to_read = size;
+
+            uint32_t offset_holder = offset;
+            for(int j = 0; j<offset_holder/BLOCK_SIZE;j++){
+                node = superblock[node].next;
+                offset -= BLOCK_SIZE;
             }
-            if (offset + size > len) {
-                memcpy(buf,
-                       disk + DISK_OFFSET(superblock[i].block),
-                       len - offset);
-                return len - offset;
+
+
+            while(to_read){
+                if(offset+to_read <= BLOCK_SIZE ){
+                    memcpy(buf, disk + DISK_OFFSET(superblock[node].block) + offset, to_read);
+                    return size;
+                }else{
+                    memcpy(buf, disk + DISK_OFFSET(superblock[node].block)+offset, BLOCK_SIZE - offset);
+                    to_read -= BLOCK_SIZE - offset;
+                    buf += BLOCK_SIZE - offset;
+                    node = superblock[node].next;
+                    offset = 0;
+                }
+                
             }
 
             memcpy(buf,
-                   disk + DISK_OFFSET(superblock[i].block), size);
+                   disk + DISK_OFFSET(superblock[node].block), to_read);
             return size;
         }
     }
@@ -291,22 +261,59 @@ int read_apocalypsefs(const char *path, char *buf, size_t size,
     return -ENOENT;
 }
 
+
 //-------------------------------------------------------------------
 
 int write_apocalypsefs(const char *path, const char *buf, size_t size,
                          off_t offset, struct fuse_file_info *fi) {
-
+    uint32_t block = 0;
+    uint32_t write = 0;
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) { //block vazio
             continue;
         }
-        if (compare_name(path, superblock[i].name)) {//achou!
-            // Cuidado! Não checa se a quantidade de bytes cabe no arquivo!
-            memcpy(disk + DISK_OFFSET(superblock[i].block) + offset, buf, size);
-            superblock[i].size = offset + size;
-            return size;
+        if (compare_name(path, superblock[i].name)) {
+            block = i;
+            
+            uint32_t offset_holder = offset;
+            for(int j = 0; j<offset_holder/BLOCK_SIZE;j++){
+                if(superblock[block].next){
+                    block = superblock[block].next;
+                    offset -= BLOCK_SIZE;
+                }
+            }
+            //chegando aqui significa que percorreu o offset até chegar no bloco que vai de fato começar a escrever
+            write = size;
+            while(write){
+                if(offset+write <= BLOCK_SIZE ){
+                    memcpy(disk + DISK_OFFSET(superblock[block].block) + offset, buf, write);
+                    write = 0;
+                }else{
+                    memcpy(disk + DISK_OFFSET(superblock[block].block) + offset, buf, BLOCK_SIZE - offset);
+                    write -= BLOCK_SIZE - offset;
+                    buf += BLOCK_SIZE - offset;
+                    offset = 0;
+
+                    if(superblock[block].next){//caso onde não é o último bloco do arquivo
+                        block = superblock[block].next;
+                    }else{
+                        superblock[block].next = find_empty_inode();
+                        block = superblock[block].next;
+
+                        strcpy(superblock[block].name, "\0"); // o nome ser nulo que indicará que o bloco
+                        superblock[block].size = size;
+                        superblock[block].block = block + 1;
+                        superblock[block].rTime = 0;
+                        superblock[block].next = 0;
+        
+                    }
+                }  
+            }
+            superblock[i].size = offset + size > superblock[i].size ? offset + size:superblock[i].size;
+            return size;   
         }
     }
+
     //Se chegou aqui não achou. Entao cria
     //Acha o primeiro block vazio
     for (int i = 0; i < MAX_FILES; i++) {
@@ -316,7 +323,7 @@ int write_apocalypsefs(const char *path, const char *buf, size_t size,
             return size;
         }
     }
-
+    
     return -EIO;
 }
 
@@ -371,7 +378,7 @@ int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
     return EINVAL;
 }
 
-//----------------------------------------------------MAX_FILES + 2---------------
+//-------------------------------------------------------------------
 
 int mkdir_apocalypsefs(const char *path, mode_t mode){
     // So aceito criar diretorios normais
@@ -457,6 +464,11 @@ int unlink_apocalypsefs(const char *path){
             }
 
             superblock[i].block = 0;
+            // Libera os blocos adicionais tambem
+            while(superblock[i].next){
+                i = superblock[i].next;
+                superblock[i].block = 0;
+            }
             return 0;
         }
     }
