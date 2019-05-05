@@ -39,7 +39,7 @@ default: $(TARGET)
 
 $(TARGET): $(MAIN) $(FUNCTIONS_P).c
 	@$(CC) $(CFLAGS) $(DIR_FUNCTIONS_P).c $(FUNCTIONS_P).c $(MAIN) -o $(TARGET) $(CONFIGS)
-	$(info Completed!)
+	@echo "Completed!"
 
 #$(FUNCTIONS).o: $(FUNCTIONS_P).c
 #	$(CC) $(CFLAGS) $(FUNCTIONS_P).c -o $(FUNCTIONS).o $(CONFIGS)

@@ -425,16 +425,82 @@ int create_apocalypsefs(const char *path, mode_t mode,
 //-------------------------------------------------------------------
 
 int unlink_apocalypsefs(const char *path){
+    char parentDir[255], started = 0;
+    strcpy(parentDir, getDirectoryPath(path));
+    int k = strlen(parentDir) ? -1 : -2;
 
 	//Procura o arquivo
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) //block vazio
             continue;
-        if (compare_name(path, superblock[i].name)) {//achou!
+
+        // Ja tenta detectar o inode do diretorio pai caso não seja o raiz
+        if (k == -1 && !strcmp(parentDir, superblock[i].name)
+                && superblock[i].isDir){
+            k = i; // Achou o pai!
+        }
+        else if (compare_name(path, superblock[i].name)) {//achou!
+            // Se nao for diretorio raiz
+            if (k != -2){
+                // Se ainda nao achou o pai, continua procurando
+                for(int s = i; s < MAX_FILES && k == -1; s++)
+                    if (!strcmp(parentDir, superblock[s].name) && superblock[s].isDir) k = s; // Achou o pai!
+                if (k == -1) return -EINVAL;
+                
+                // Corrige as referências de inode no diretório pai
+                unsigned int *block = (unsigned int*)(disk + DISK_OFFSET(superblock[k].block));
+                for (int j = 0; j < MAX_DIR_CONTENTS - 1; ++j){
+                    if (block[j] == (unsigned int)i) started = 1;
+                    if (started) block[j] = block[j + 1];
+                    if (block[j] == END_DIR) break;
+                }
+            }
+
             superblock[i].block = 0;
             return 0;
         }
-        
+    }
+    return -ENOENT;
+}
+
+//-------------------------------------------------------------------
+
+int rmdir_apocalypsefs(const char *path){
+    char parentDir[255], started = 0;
+    strcpy(parentDir, getDirectoryPath(path));
+    int k = strlen(parentDir) ? -1 : -2;
+
+    //Procura o diretório
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block == 0) //block vazio
+            continue;
+enhanced
+        // Ja tenta detectar o inode do diretorio pai caso não seja o raiz
+        if (k == -1 && !strcmp(parentDir, superblock[i].name)
+                && superblock[i].isDir){
+            k = i; // Achou o pai!
+        }
+        else if (compare_name(path, superblock[i].name)
+                    && superblock[i].isDir) {//achou!
+            // Se nao for diretorio raiz
+            if (k != -2){
+                // Se ainda nao achou o pai, continua procurando
+                for(int s = i; s < MAX_FILES && k == -1; s++)
+                    if (!strcmp(parentDir, superblock[s].name) && superblock[s].isDir) k = s; // Achou o pai!
+                if (k == -1) return -EINVAL;
+                
+                // Corrige as referências de inode no diretório pai
+                unsigned int *block = (unsigned int*)(disk + DISK_OFFSET(superblock[k].block));
+                for (int j = 0; j < MAX_DIR_CONTENTS - 1; ++j){
+                    if (block[j] == (unsigned int)i) started = 1;
+                    if (started) block[j] = block[j + 1];
+                    if (block[j] == END_DIR) break;
+                }
+            }
+
+            superblock[i].block = 0;
+            return 0;
+        }
     }
     return -ENOENT;
 }
