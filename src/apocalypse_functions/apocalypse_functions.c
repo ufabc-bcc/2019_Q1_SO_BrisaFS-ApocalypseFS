@@ -474,7 +474,7 @@ int rmdir_apocalypsefs(const char *path){
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) //block vazio
             continue;
-enhanced
+            
         // Ja tenta detectar o inode do diretorio pai caso não seja o raiz
         if (k == -1 && !strcmp(parentDir, superblock[i].name)
                 && superblock[i].isDir){
