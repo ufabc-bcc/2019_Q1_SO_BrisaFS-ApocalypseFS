@@ -26,12 +26,9 @@ char * getDumpPath(){char *filepath;
 
 //-------------------------------------------------------------------
 
-void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                    uint16_t tamanho, uint16_t block, time_t current, const byte *conteudo) {
+void fill_block (int isuperblock, const char *nome, uint32_t direitos,
+                    uint32_t tamanho, uint32_t block, time_t current, const byte *conteudo) {
     char *mnome = (char*)nome;
-    //Joga fora a(s) barras iniciais
-    while (mnome[0] != '\0' && mnome[0] == '/')
-        mnome++;
 
     strcpy(superblock[isuperblock].name, mnome);
     superblock[isuperblock].rights = direitos;
@@ -40,6 +37,7 @@ void fill_block (int isuperblock, const char *nome, uint16_t direitos,
     superblock[isuperblock].size = tamanho;
     superblock[isuperblock].block = block;
     superblock[isuperblock].rTime = current;
+    superblock[isuperblock].isDir = 0;
 
     if (conteudo != NULL)
         memcpy(disk + DISK_OFFSET(block), conteudo, tamanho);
@@ -81,7 +79,7 @@ int init_apocalypsefs() {
 
         printf("No dump file has been found... Starting from zero\n");
         //Cria um arquivo na mão de boas vindas
-        char *nome = "You're wellcome.txt";
+        char *nome = "/You're wellcome.txt";
         //Cuidado! pois se tiver acentos em UTF8 uma letra pode ser mais que um byte
         char *conteudo = "Bem vindo ao sistema de arquivos Apocalypse.\n";
         //0 está sendo usado pelo superblock.fileID O primeiro livre é o 1
@@ -194,9 +192,9 @@ int chown_apocalypsefs(const char *path, uid_t user_id, gid_t group_id,
 int getattr_apocalypsefs(const char *path, struct stat *stbuf,
                            struct fuse_file_info *fi) {
     memset(stbuf, 0, sizeof(struct stat));
-
+    
     //Diretório raiz
-    if (strcmp(path, "/") == 0) {
+    if (!strcmp(path, "/")) {
         stbuf->st_mode = __S_IFDIR | 0755;
         stbuf->st_nlink = 2;
         return 0;
@@ -206,8 +204,7 @@ int getattr_apocalypsefs(const char *path, struct stat *stbuf,
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block != 0 //Bloco sendo usado
             && compare_name(superblock[i].name, path)) { //Nome bate
-
-            stbuf->st_mode = __S_IFREG | superblock[i].rights;
+            stbuf->st_mode = superblock[i].isDir ? __S_IFDIR | 0755 : __S_IFREG | superblock[i].rights;
             stbuf->st_nlink = 1;
             stbuf->st_uid = superblock[i].user;
             stbuf->st_gid = superblock[i].group;
@@ -234,9 +231,24 @@ int readdir_apocalypsefs(const char *path, void *buf, fuse_fill_dir_t filler,
     filler(buf, ".", NULL, 0, 0);
     filler(buf, "..", NULL, 0, 0);
 
-    for (int i = 0; i < MAX_FILES; i++) {
-        if (superblock[i].block != 0) { //Bloco ocupado!
-            filler(buf, superblock[i].name, NULL, 0, 0);
+    if (!strcmp(path, "/")){
+        for (int i = 0; i < MAX_FILES; i++) {
+            if (superblock[i].block //Bloco ocupado!
+                && isFromDir("/", superblock[i].name)) { //Pertence ao diretório[
+                filler(buf, superblock[i].name + 1, NULL, 0, 0);
+            }
+        }
+    }
+    else{
+        int i;
+        for (i = 0; i < MAX_FILES; ++i)
+            if (superblock[i].isDir &&
+                !strcmp(path, superblock[i].name)) break;
+
+        unsigned int *block = (unsigned int *)(disk + DISK_OFFSET(superblock[i].block));
+        for (int k = 0; k < MAX_DIR_CONTENTS; ++k){
+            if (block[k] == (unsigned int)END_DIR) break;
+            filler(buf, baseFileName(superblock[block[k]].name), NULL, 0, 0);
         }
     }
 
@@ -300,6 +312,7 @@ int write_apocalypsefs(const char *path, const char *buf, size_t size,
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) {//ninguem usando
             fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), buf);
+            setDirProperties(path, i);
             return size;
         }
     }
@@ -326,11 +339,13 @@ int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *f
     if (findex != -1) {// arquivo existente
         superblock[findex].size = size;
         return 0;
-    } else {// Arquivo novo
+    } else {
+        // Arquivo novo
         //Acha o primeiro block vazio
         for (int i = 0; i < MAX_FILES; i++) {
             if (superblock[i].block == 0) {//ninguem usando
                 fill_block (i, path, DEFAULT_RIGHTS, size, i + 1, time(NULL), NULL);
+                setDirProperties(path, i);
                 break;
             }
         }
@@ -341,14 +356,13 @@ int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *f
 //-------------------------------------------------------------------
 
 int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
-    if (S_ISREG(mode)) { //So aceito criar arquivos normais
-        //Cuidado! Não seta os direitos corretamente! Veja "man 2
-        //mknod" para instruções de como pegar os direitos e demais
-        //informações sobre os arquivos
+    if (S_ISREG(mode)) {
+        //So aceito criar arquivos normais
         //Acha o primeiro block vazio
         for (int i = 0; i < MAX_FILES; i++) {
-            if (superblock[i].block == 0) {//ninguem usando
-                fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, time(NULL), NULL);
+            if (!superblock[i].block) {//ninguem usando
+                fill_block (i, path, mode & 0x1FF, 0, i + 1, time(NULL), NULL);
+                setDirProperties(path, i);
                 return 0;
             }
         }
@@ -357,13 +371,30 @@ int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev) {
     return EINVAL;
 }
 
+//----------------------------------------------------MAX_FILES + 2---------------
+
+int mkdir_apocalypsefs(const char *path, mode_t mode){
+    // So aceito criar diretorios normais
+    for (int i = 0; i < MAX_FILES; ++i){
+        if (!superblock[i].block){
+            fill_block (i, path, mode & 0x1FF, 0, i + 1, time(NULL), NULL);
+            setDirProperties(path, i);
+            superblock[i].isDir = 1;
+        
+            unsigned int * block = (unsigned int *)(disk + DISK_OFFSET(superblock[i].block));
+            block[0] = (unsigned int)END_DIR;
+            return 0;
+        }
+    }
+    return ENOSPC;
+}
+
 //-------------------------------------------------------------------
 
 int fsync_apocalypsefs(const char *path, int isdatasync,
                          struct fuse_file_info *fi) {
-    //Como tudo é em memória, não é preciso fazer nada.
-    // Cuidado! Você vai precisar jogar tudo que está só em memóri no disk
-    return 0;
+    // Joga tudo o que está na memória no disco
+    return save_apocalypsefs_instance() ? -1 : 0;
 }
 
 //-------------------------------------------------------------------
@@ -378,13 +409,13 @@ int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
 
 int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi) {
-    //Cuidado! Está ignorando todos os parâmetros. O seu deverá
-    //cuidar disso Veja "man 2 mknod" para instruções de como pegar os
-    //direitos e demais informações sobre os arquivos Acha o primeiro
-    //block vazio
+    //Acha o primeiro block vazio
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) {//ninguem usando
-            fill_block (i, path, DEFAULT_RIGHTS, 0, i + 1, time(NULL), NULL);
+            fill_block (i, path, mode & 0x1FF, 0, i + 1, time(NULL), NULL);
+
+            // TODO: Procurar por máximo de arquivos antes de criar
+            setDirProperties(path, i);
             return 0;
         }
     }
@@ -392,6 +423,7 @@ int create_apocalypsefs(const char *path, mode_t mode,
 }
 
 //-------------------------------------------------------------------
+
 int unlink_apocalypsefs(const char *path){
 
 	//Procura o arquivo
@@ -406,3 +438,5 @@ int unlink_apocalypsefs(const char *path){
     }
     return -ENOENT;
 }
+
+//-------------------------------------------------------------------

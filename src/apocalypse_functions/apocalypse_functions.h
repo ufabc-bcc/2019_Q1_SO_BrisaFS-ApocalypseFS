@@ -25,6 +25,7 @@
 
 #include "../global_macros/global_macros.h"
 #include "../global_types/global_types.h"
+#include "../dir_functions/dir_functions.h"
 
 // Have to inclue after due to header definition
 #include <fuse3/fuse.h>
@@ -33,8 +34,8 @@
 char * getDumpPath();
 
 /* Preenche os campos do superblock de índice isuperblock */
-void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                     uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo);
+void fill_block (int isuperblock, const char *nome, uint32_t direitos,
+                     uint32_t tamanho, uint32_t block, time_t time, const byte *conteudo);
 
 /* Para persistir o FS em um disk representado por um arquivo, talvez
    seja necessário "formatar" o arquivo pegando o seu tamanho e
@@ -100,6 +101,12 @@ int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *f
    path com o modo mode*/
 int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev);
 
+
+/**
+ *  Cria um diretório comum no sistema de darquivos
+ */
+int mkdir_apocalypsefs(const char *path, mode_t mode);
+
 /* Sincroniza escritas pendentes (ainda em um buffer) em disk. Só
    retorna quando todas as escritas pendentes tiverem sido
    persistidas */
@@ -124,4 +131,3 @@ int create_apocalypsefs(const char *path, mode_t mode,
 int unlink_apocalypsefs(const char *path);
 
 #endif // APOCALYPSE_FUNCTIONS_H
-

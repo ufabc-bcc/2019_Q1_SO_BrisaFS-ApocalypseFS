@@ -11,13 +11,15 @@ typedef char byte;
    por exemplo nome, direitos, tamanho, block inicial, ... */
 typedef struct {
     char name[250];
-    uint16_t user;
-    uint16_t group;
-    uint16_t rights;
-    uint16_t size;
-    uint16_t block;
+    uint32_t user;
+    uint32_t group;
+    uint32_t rights;
+    uint32_t size;
+    uint32_t block;
 
     time_t rTime;
+
+    byte isDir;
 } inode;
 
 /* Disco - A variável abaixo representa um disk que pode ser acessado
