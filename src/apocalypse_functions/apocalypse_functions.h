@@ -25,16 +25,11 @@
 
 #include "../global_macros/global_macros.h"
 #include "../global_types/global_types.h"
+#include "../global_utilities/global_utilities.h"
+#include "../dir_functions/dir_functions.h"
 
 // Have to inclue after due to header definition
 #include <fuse3/fuse.h>
-
-/* Retorna o caminho para o arquivo dump */
-char * getDumpPath();
-
-/* Preenche os campos do superblock de índice isuperblock */
-void fill_block (int isuperblock, const char *nome, uint16_t direitos,
-                     uint16_t tamanho, uint16_t block, time_t time, const byte *conteudo);
 
 /* Para persistir o FS em um disk representado por um arquivo, talvez
    seja necessário "formatar" o arquivo pegando o seu tamanho e
@@ -47,9 +42,6 @@ int init_apocalypsefs();
     função assim que o loop principal do FUSE for interrompido. Retorna 0 ou, caso 
     haja algum erro, 10 */
 int save_apocalypsefs_instance();
-
-/* Devolve 1 caso representem o mesmo nome e 0 cc */
-int compare_name(const char *a, const char *b);
 
 /* A função chmod_apocalypsefs modifica as permissões de um arquivo.
    Como os diretórios não foram implementados, ela ignora até mesmo
@@ -100,28 +92,61 @@ int truncate_apocalypsefs(const char *path, off_t size, struct fuse_file_info *f
    path com o modo mode*/
 int mknod_apocalypsefs(const char *path, mode_t mode, dev_t rdev);
 
+
+/**
+ *  Cria um diretório comum no sistema de darquivos
+ */
+int mkdir_apocalypsefs(const char *path, mode_t mode);
+
 /* Sincroniza escritas pendentes (ainda em um buffer) em disk. Só
    retorna quando todas as escritas pendentes tiverem sido
    persistidas */
 int fsync_apocalypsefs(const char *path, int isdatasync,
                          struct fuse_file_info *fi);
 
-/* Ajusta a data de acesso e modificação do arquivo com resolução de nanosegundos */
+/**
+ * Ajusta a data de acesso e modificação do arquivo com resolução de nanosegundos
+ */
 int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
                            struct fuse_file_info *fi);
 
 
-/* Cria e abre o arquivo apontado por path. Se o arquivo não existir
-   cria e depois abre*/
+/**
+ * Cria e abre o arquivo apontado por path. Se o arquivo não existir
+ * cria e depois abre
+ */
 int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi);
 
-/* Deleta o arquivo apontado por path. Se o arquivo não existir,
-   retorna erro.
-   É importante notar que o arquivo não é efetivamente apagado.
-   Apenas o bloco apontado pelo inode é redefinido */
+/**
+ * Renomeia o arquivo antigo para o novo caminho
+ * *flags* podem ser `RENAME_EXCHANGE` ou `RENAME_NOREPLACE`.
+ * Se RENAME_NOREPLACE for especificado, o sistema de arquivos
+ * não deve sobrescrever *newname* se existir, e deve retornar um erro,
+ * Se `RENAME_EXCHANGE` for especificado, o sistema de arquivos deve
+ * mudar os dois arquivos automaticamente, i.e. ambos devem coexistir.
+ */
+
+int rename_apocalypsefs(const char *oldPath, const char *newPath, unsigned int flags);
+
+/**
+ * Remove o arquivo apontado por path. Se o arquivo não existir,
+ * retorna erro.
+ * É importante notar que o arquivo não é efetivamente apagado.
+ * Apenas o bloco apontado pelo inode é redefinido
+ */
 
 int unlink_apocalypsefs(const char *path);
 
-#endif // APOCALYPSE_FUNCTIONS_H
+/**
+ * Remove o diretório apontado por path. Se o diretório não existir,
+ * retorna erro.
+ * É importante notar que o diretório deve estar vazio para que a operacao
+ * seja efetuada com sucesso.
+ * Bem como na remoção de arquivo, apenas o bloco apontado pelo inode e
+ * redefinido
+ */
 
+int rmdir_apocalypsefs(const char *path);
+
+#endif // APOCALYPSE_FUNCTIONS_H

@@ -16,6 +16,10 @@ TARGET = apocalypsefs.run
 MAIN = apocalypse_main.c
 FUNCTIONS = apocalypse_functions
 FUNCTIONS_P = ./$(FUNCTIONS)/$(FUNCTIONS)
+DIR_FUNCTIONS = dir_functions
+DIR_FUNCTIONS_P = ./$(DIR_FUNCTIONS)/$(DIR_FUNCTIONS)
+UTILITIES_FUNCTIONS = global_utilities
+UTILITIES_FUNCTIONS_P = ./$(UTILITIES_FUNCTIONS)/$(UTILITIES_FUNCTIONS)
 
 # Configs
 CONFIGS = `pkg-config fuse3 --cflags --libs`
@@ -36,8 +40,8 @@ endif
 default: $(TARGET)
 
 $(TARGET): $(MAIN) $(FUNCTIONS_P).c
-	@$(CC) $(CFLAGS) $(FUNCTIONS_P).c $(MAIN) -o $(TARGET) $(CONFIGS)
-	$(info Completed!)
+	@$(CC) $(CFLAGS) $(DIR_FUNCTIONS_P).c $(UTILITIES_FUNCTIONS_P).c $(FUNCTIONS_P).c $(MAIN) -o $(TARGET) $(CONFIGS)
+	@echo "Completed!"
 
 #$(FUNCTIONS).o: $(FUNCTIONS_P).c
 #	$(CC) $(CFLAGS) $(FUNCTIONS_P).c -o $(FUNCTIONS).o $(CONFIGS)
