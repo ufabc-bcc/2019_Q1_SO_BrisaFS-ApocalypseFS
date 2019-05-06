@@ -104,16 +104,30 @@ int mkdir_apocalypsefs(const char *path, mode_t mode);
 int fsync_apocalypsefs(const char *path, int isdatasync,
                          struct fuse_file_info *fi);
 
-/* Ajusta a data de acesso e modificação do arquivo com resolução de nanosegundos */
+/**
+ * Ajusta a data de acesso e modificação do arquivo com resolução de nanosegundos
+ */
 int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
                            struct fuse_file_info *fi);
 
 
-/* Cria e abre o arquivo apontado por path. Se o arquivo não existir
+/**
+ * Cria e abre o arquivo apontado por path. Se o arquivo não existir
  * cria e depois abre
  */
 int create_apocalypsefs(const char *path, mode_t mode,
                           struct fuse_file_info *fi);
+
+/**
+ * Renomeia o arquivo antigo para o novo caminho
+ * *flags* podem ser `RENAME_EXCHANGE` ou `RENAME_NOREPLACE`.
+ * Se RENAME_NOREPLACE for especificado, o sistema de arquivos
+ * não deve sobrescrever *newname* se existir, e deve retornar um erro,
+ * Se `RENAME_EXCHANGE` for especificado, o sistema de arquivos deve
+ * mudar os dois arquivos automaticamente, i.e. ambos devem coexistir.
+ */
+
+int rename_apocalypsefs(const char *oldPath, const char *newPath, unsigned int flags);
 
 /**
  * Remove o arquivo apontado por path. Se o arquivo não existir,

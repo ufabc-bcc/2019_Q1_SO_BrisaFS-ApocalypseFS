@@ -10,7 +10,7 @@ typedef char byte;
 /* Um inode guarda todas as informações relativas a um arquivo como
    por exemplo nome, direitos, tamanho, block inicial, ... */
 typedef struct {
-    char name[250];
+    char name[PATH_SIZE];
     uint32_t user;
     uint32_t group;
     uint32_t rights;

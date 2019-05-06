@@ -420,8 +420,6 @@ int create_apocalypsefs(const char *path, mode_t mode,
     for (int i = 0; i < MAX_FILES; i++) {
         if (superblock[i].block == 0) {//ninguem usando
             fill_block (i, path, mode & 0x1FF, 0, i + 1, time(NULL), NULL);
-
-            // TODO: Procurar por máximo de arquivos antes de criar
             setDirProperties(path, i);
             return 0;
         }
@@ -431,8 +429,77 @@ int create_apocalypsefs(const char *path, mode_t mode,
 
 //-------------------------------------------------------------------
 
+int rename_apocalypsefs(const char *oldPath, const char *newPath, unsigned int flags){
+    int oldParIndex, newParIndex;
+    unsigned int inodeIndex = MAX_FILES + 3;
+
+    char parentDirOld[PATH_SIZE]; // Directory path of the old name
+    char parentDirNew[PATH_SIZE]; // Directory path of the new name
+    char newPathAlt[PATH_SIZE];   // This one is safer to be used
+
+    strcpy(newPathAlt, newPath);
+    strcpy(parentDirOld, getDirectoryPath(oldPath));
+    strcpy(parentDirNew, getDirectoryPath(newPath));
+
+    oldParIndex = strlen(parentDirOld) ? -1 : -2;
+    newParIndex = strlen(parentDirNew) ? -1 : -2;
+
+	// Verifica se o novo nome ja existe
+    // Verifica se o novo diretorio pai existe
+    // Busca pelo atual diretorio pai
+    // Verifica se o arquivo existe
+    for (unsigned int i = 0; i < MAX_FILES; i++) {
+        if (superblock[i].block == 0) //block vazio
+            continue;
+
+        // Achou dir pai novo
+        if (!strcmp(superblock[i].name, parentDirOld)
+            && superblock[i].isDir && oldParIndex == -1)
+            oldParIndex = i;
+
+        // Achou dir pai atual
+        if (!strcmp(superblock[i].name, parentDirNew)
+            && superblock[i].isDir && newParIndex == -1)
+            newParIndex = i;
+
+        // Achou inode
+        if (compare_name(oldPath, superblock[i].name))
+            inodeIndex = i;
+
+        // Achou arquivo ja existente
+        if (compare_name(superblock[i].name, newPath)){
+            //Se ja existe e nao pode substituir, cai fora
+            if (flags == 0x1) return EEXIST;
+
+            int max = strlen(newPathAlt);
+            newPathAlt[max++] = '1';
+            newPathAlt[max] = '\0';
+        }
+    }
+
+    if (newParIndex == -1 || oldParIndex == -1 || inodeIndex == MAX_FILES + 3) return ENOENT;
+
+    if (oldParIndex != -2){
+        // Corrige as referências de inode no diretório pai
+        unsigned int *block = (unsigned int*)(disk + DISK_OFFSET(superblock[oldParIndex].block));
+        char started = 0;
+        for (int j = 0; j < MAX_DIR_CONTENTS - 1; ++j){
+            if (block[j] == inodeIndex) started = 1;
+            if (started) block[j] = block[j + 1];
+            if (block[j] == END_DIR) break;
+        }
+    }
+
+    strcpy(superblock[inodeIndex].name, newPathAlt);
+    setDirProperties(newPathAlt, inodeIndex);
+    
+    return 0;
+}
+
+//-------------------------------------------------------------------
+
 int unlink_apocalypsefs(const char *path){
-    char parentDir[255], started = 0;
+    char parentDir[PATH_SIZE], started = 0;
     strcpy(parentDir, getDirectoryPath(path));
     int k = strlen(parentDir) ? -1 : -2;
 
@@ -478,7 +545,7 @@ int unlink_apocalypsefs(const char *path){
 //-------------------------------------------------------------------
 
 int rmdir_apocalypsefs(const char *path){
-    char parentDir[255], started = 0;
+    char parentDir[PATH_SIZE], started = 0;
     strcpy(parentDir, getDirectoryPath(path));
     int k = strlen(parentDir) ? -1 : -2;
 
