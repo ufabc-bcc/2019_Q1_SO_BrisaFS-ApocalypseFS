@@ -5,8 +5,14 @@
 - O projeto, atualmente, está sendo desenvolvido e testado nas distros Fedora e Ubuntu.
 - O repositório principal poderá conter bugs, porém, o código sempre será compilável. Para acesso às versões mais recentes, alterne para a *branch* **`unstable-dev`**.
 
+## Documentação
+
+O relatório final do projeto pode ser encontrado diretamente [neste link](https://github.com/ufabc-bcc/2019_Q1_SO_BrisaFS-ApocalypseFS/blob/master/docs/FINAL_REPORT_Apocalypse_FS___2019_1.pdf) ou através da pasta "docs" contida na raiz deste repositório
+
 ## Desenvolvedores
 
+- Guilherme Salim
+- Marcelo Martins
 - Mauro Mascarenhas de Araújo
 
 ## Baixando, compilando e executando
