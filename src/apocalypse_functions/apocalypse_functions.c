@@ -162,9 +162,9 @@ int getattr_apocalypsefs(const char *path, struct stat *stbuf,
             stbuf->st_uid = superblock[i].user;
             stbuf->st_gid = superblock[i].group;
             stbuf->st_size = superblock[i].size;
-            stbuf->st_ctime = superblock[i].rTime; // Last status change time
-            stbuf->st_mtime = superblock[i].rTime; // Modification time
-            // stbuf->st_atime = superblock[i].rTime; // Access time
+            stbuf->st_atime = superblock[i].aTime; // Access time
+            stbuf->st_ctime = superblock[i].cTime; // Last status change time
+            stbuf->st_mtime = superblock[i].mTime; // Modification time
             return 0; //OK, arquivo encontrado
         }
     }
@@ -304,7 +304,9 @@ int write_apocalypsefs(const char *path, const char *buf, size_t size,
                         strcpy(superblock[block].name, "\0"); // o nome ser nulo que indicará que o bloco
                         superblock[block].size = size;
                         superblock[block].block = block + 1;
-                        superblock[block].rTime = 0;
+                        superblock[block].aTime = 0;
+                        superblock[block].cTime = 0;
+                        superblock[block].mTime = 0;
                         superblock[block].next = 0;
         
                     }
@@ -409,8 +411,19 @@ int fsync_apocalypsefs(const char *path, int isdatasync,
 
 int utimens_apocalypsefs(const char *path, const struct timespec ts[2],
                            struct fuse_file_info *fi) {
-    // Cuidado! O sistema BrisaFS não aceita horários. O seu deverá aceitar!
-    return 0;
+    if (!strcmp(path, "/")) return EPERM;
+
+    for (int i = 0; i < MAX_FILES; ++i){
+        if (!superblock[i].block)
+            continue;
+        
+        if (!strcmp(superblock[i].name, path)){
+            superblock[i].aTime = ts[0].tv_sec ? ts[0].tv_sec : time(NULL);
+            superblock[i].mTime = ts[1].tv_sec ? ts[1].tv_sec : time(NULL);
+            return 0;
+        }
+    }
+    return ENOENT;
 }
 
 //-------------------------------------------------------------------

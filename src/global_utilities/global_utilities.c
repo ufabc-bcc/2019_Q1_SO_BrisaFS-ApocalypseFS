@@ -48,7 +48,9 @@ void fill_block (int isuperblock, const char *nome, uint32_t direitos,
     superblock[isuperblock].user = getuid();
     superblock[isuperblock].size = tamanho;
     superblock[isuperblock].block = block;
-    superblock[isuperblock].rTime = current;
+    superblock[isuperblock].aTime = current;
+    superblock[isuperblock].cTime = current;
+    superblock[isuperblock].mTime = current;
     superblock[isuperblock].isDir = 0;
     superblock[isuperblock].next = 0;
     
@@ -70,7 +72,9 @@ void fill_block (int isuperblock, const char *nome, uint32_t direitos,
             superblock[isuperblock].user = 0;
             superblock[isuperblock].size = tamanho;
             superblock[isuperblock].block = block;
-            superblock[isuperblock].rTime = 0;
+            superblock[isuperblock].aTime = 0;
+            superblock[isuperblock].cTime = 0;
+            superblock[isuperblock].mTime = 0;
             superblock[isuperblock].isDir = 0;
             superblock[isuperblock].next = 0;
         }

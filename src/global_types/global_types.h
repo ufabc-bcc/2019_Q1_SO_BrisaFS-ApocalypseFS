@@ -18,7 +18,9 @@ typedef struct {
     uint32_t block;
 
     uint32_t next;
-    time_t rTime;
+    time_t aTime;
+    time_t cTime;
+    time_t mTime;
 
     byte isDir;
 } inode;
